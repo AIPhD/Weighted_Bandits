@@ -1,9 +1,11 @@
 import numpy as np
-import training
+import training as t
+import evaluation as e
 
 def main():
-    
-    training.weighted_training()
+    # t.weighted_training()
+    regrets, alphas = t.compared_alphas()
+    # e.multiple_regret_plots(regrets, alphas)
 
 
 if __name__ == '__main__':
