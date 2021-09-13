@@ -1,5 +1,6 @@
 # Prerequisites
 *.d
+*.png
 
 # Compiled Object files
 *.slo
@@ -32,3 +33,5 @@
 *.app
 __pycache__/
 .vscode/
+
+

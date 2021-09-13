@@ -51,7 +51,7 @@ def alpha_plots(alphas):
     plt.ylabel(r'$\mathrm{\alpha}$')
     
     for alpha in alphas:
-        plt.semilogy(alpha, label=r"$\alpha$ = {alpha}".format(alpha=alpha[0]))
+        plt.plot(alpha, label=r"$\alpha$ = {alpha}".format(alpha=alpha[0]))
     
     plt.legend()
     plt.savefig('/home/steven/weighted_bandits/plots/alpha_evol.png')

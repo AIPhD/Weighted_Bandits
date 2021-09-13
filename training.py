@@ -39,8 +39,6 @@ def update_alphas(alpha_1, alpha_2, r, r_loss_1, r_loss_2):
     '''Update alphas, based on the achieved rewards of the bandits.'''
     alpha_1_resc = alpha_1 * entropy_loss(r, r_loss_1)[:, np.newaxis]
     alpha_2_resc = alpha_2 * entropy_loss(r, r_loss_2)[:, np.newaxis]
-    # if alpha_1_resc + alpha_2_resc == 0:
-      #   print("Stop")
     alpha_1 = alpha_1_resc / (alpha_1_resc + alpha_2_resc)
     alpha_2 = 1 - alpha_1
     return alpha_1, alpha_2
@@ -48,10 +46,13 @@ def update_alphas(alpha_1, alpha_2, r, r_loss_1, r_loss_2):
 
 def new_update_alphas(y_S, y_T, gamma):
 
-    if np.sqrt(4 + np.dot(y_S - y_T, y_S - y_T)) < gamma:
-        alpha_1 = 1
-    else:
-        alpha_1 = 0
+    # if np.sqrt(4 + np.einsum('ij,ij->i', y_S - y_T, y_S - y_T)) < gamma:
+    #     alpha_1 = 1
+    # else:
+    #     alpha_1 = 0
+
+    alpha_1 = np.argmax([np.sqrt(4 + np.einsum('ij,ij->i', y_S - y_T, y_S - y_T)), 
+                         np.ndarray.flatten(gamma * np.ones((c.repeats, 1)))], axis=0)[:, np.newaxis]
 
     alpha_2 = 1 - alpha_1
 
@@ -59,7 +60,7 @@ def new_update_alphas(y_S, y_T, gamma):
     
 
 
-def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats):
+def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats, update_rule='soft'):
     '''Training algorithm based on weighted UCB function for linear bandits.'''
 
     theta_estim = np.reshape(np.repeat(np.random.multivariate_normal(mean=np.zeros(c.dimension),
@@ -103,13 +104,10 @@ def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats):
         instance = target_data[np.arange(repeats), index]
         x_history.append(instance)
         opt_instance = target_data[np.arange(repeats), index_opt]
-        r_estim_1 = np.einsum('ij,ij->i', theta_source, instance)
-        r_estim_2 = np.einsum('ij,ij->i', theta_estim, instance)    # TODO: add exploration to reward
+        r_estim_1 = np.einsum('ij,ij->i', theta_source, instance) #+ np.ndarray.flatten(gamma_S) * np.sqrt(np.einsum('ij,ij->i', instance, np.einsum('ijk,ik->ij', A_inv, instance)))
+        r_estim_2 = np.einsum('ij,ij->i', theta_estim, instance) #+ np.ndarray.flatten(gamma_scalar) * np.sqrt(np.einsum('ij,ij->i', instance, np.einsum('ijk,ik->ij', A_inv, instance)))
         noise = c.epsilon * np.random.normal(size=repeats)
         r_real = np.einsum('ij,ij->i', theta_target, instance) + noise
-
-
-        # print("TOTAL REWARD LOSS = {loss}\n".format(loss=np.abs(r_real-alpha_1*r_estim_1-alpha_2*r_estim_2)))
 
         alpha_evol[:, i] = np.ndarray.flatten(np.asarray(alpha_1))
         rewards[:, i] = r_real
@@ -117,11 +115,14 @@ def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats):
                                         np.arange(repeats)]
         gamma_S = np.asarray([np.max(np.abs(rewards[:, :i + 1] - y_S[:, :i + 1]), axis=1)/np.sqrt(np.einsum('ij,ij->i', x_theta, x_theta))]).T #* np.ones(c.context_size)
         gamma_scalar = np.asarray([np.sqrt(c.lamb) + np.sqrt(2 * np.log(np.sqrt(np.linalg.det(A_matrix))
-                                                                        /(np.sqrt(c.lamb) * c.delta)))]).T * 0.1
+                                                                        /(np.sqrt(c.lamb) * c.delta)))]).T
         # gamma = gamma_scalar * np.ones(c.context_size)
         y_S[:, i] = r_estim_1
-        alpha_1, alpha_2 = update_alphas(alpha_1, alpha_2, r_real, r_estim_1, r_estim_2)
-        # alpha_1, alpha_2 = new_update_alphas(y_S, rewards, gamma_scalar)
+
+        if update_rule=='soft':
+            alpha_1, alpha_2 = update_alphas(alpha_1, alpha_2, r_real, r_estim_1, r_estim_2)
+        elif update_rule=='hard':
+            alpha_1, alpha_2 = new_update_alphas(y_S, rewards, gamma_scalar)
         A_matrix += np.einsum('ij,ik->ijk', instance, instance)
         
         A_inv -= np.einsum('ijk,ikl->ijl', A_inv, np.einsum('ijk,ikl->ijl', np.einsum('ij,ik->ijk', instance, instance), A_inv))/(1 + np.einsum('ij,ij->i', instance, np.einsum('ijk,ik->ij', A_inv, instance)))[:, np.newaxis, np.newaxis]
@@ -132,7 +133,7 @@ def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats):
         inst_regret = np.einsum('ij,ij->i', theta_target, opt_instance) - r_real
         regret_evol[:, i] = inst_regret
         
-        print("ALPHA SOURCE = {alpha1} \nALPHA TARGET = {alpha2} \n".format(alpha1=alpha_1, alpha2=alpha_2))
+        print("ALPHA SOURCE = {alpha1}\n".format(alpha1=alpha_1))
 
     
     # plt.scatter(np.dot(target_data, theta_target.T), no_pulls)
@@ -142,10 +143,9 @@ def weighted_training(target=target, alpha=c.alpha, repeats=c.repeats):
     return regret_evol.sum(axis=0)/repeats, alpha_evol.sum(axis=0)/repeats
 
 
-def compared_alphas():
+def compared_alphas(alphas):
     '''Train on the same context set with differently initialized alphas.'''
 
-    alphas = [0, 0.5, 0.99]
     regrets = []
     alpha_evol = []
 
