@@ -26,7 +26,7 @@ def regret_plot(evol, ylabel='Cummulative regret'):
     plt.show()
 
 
-def multiple_regret_plots(regrets, alphas):
+def multiple_alpha_regret_plots(regrets, alphas):
     '''Plot multiple regret evolutions for comparison.'''
 
     i = 0
@@ -38,24 +38,60 @@ def multiple_regret_plots(regrets, alphas):
         i += 1
     
     plt.legend()
-    plt.savefig('/home/steven/weighted_bandits/plots/expected_regret.png')
+    plt.savefig('/home/steven/weighted_bandits/plots/regret_alpha_comparison.png')
 
     plt.show()
     plt.close()
+
+
+def multiple_beta_regret_plots(regrets, bethas=None, plot_label=None, plotsuffix='regret_beta_comparison'):
+    '''Plot multiple regret evolutions for comparison.'''
+
+    i = 0
+    plt.xlabel('Episodes')
+    plt.ylabel(r'$\frac{\mathrm{Regret}}{T}$')
+    
+    if bethas is None:
+        
+        for regret in regrets:
+            plt.plot(np.cumsum(regret)/np.cumsum(np.ones(len(regret))), label=plot_label)
+            i += 1
+
+    else:
+
+        for regret in regrets:
+            plt.plot(np.cumsum(regret)/np.cumsum(np.ones(len(regret))), label=plot_label+r" $\beta$ = {beta}".format(beta=bethas[i]))
+            i += 1
+    
+    plt.legend()
+    # plt.savefig('/home/steven/weighted_bandits/plots/'+plotsuffix+'.png')
+
+    # plt.close()
     
 
 
-def alpha_plots(alphas):
+def alpha_plots(alphas, betas=None):
     
-    plt.xlabel('Number of episodes')
+    plt.xlabel('Episode')
     plt.ylabel(r'$\mathrm{\alpha}$')
     
-    for alpha in alphas:
-        plt.plot(alpha, label=r"$\alpha$ = {alpha}".format(alpha=alpha[0]))
+    i = 0
+
+    if betas is None:
+
+        for alpha in alphas:
+            plt.plot(alpha)    
+
+    else:
+
+        for alpha in alphas:
+            plt.plot(alpha, label=r"$\beta$ = {beta}".format(beta=betas[i]))
+            i += 1
     
     plt.legend()
     plt.savefig('/home/steven/weighted_bandits/plots/alpha_evol.png')
 
     plt.show()
     plt.close()
+    
     
