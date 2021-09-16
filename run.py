@@ -7,7 +7,7 @@ matplotlib.use('TKAgg')
 
 def main():
     
-    betas = [0.1, 1, 10]
+    betas = [0.1, 10]
     regret_linucb, alpha_none = t.weighted_training(alpha=0, update_rule='softmax')
     regrets_hard, alphas_hard = t.weighted_training()
     regrets, alpha_evol = t.compared_betas(betas, update_rule='softmax')

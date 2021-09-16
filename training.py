@@ -52,7 +52,8 @@ def update_alphas(alpha_1, alpha_2, r, r_loss_1, r_loss_2, beta):
     return alpha_1, alpha_2
 
 
-def new_update_alphas(y_S, y_T, gamma, gamma_S):
+def hard_update_alphas(y_S, y_T, gamma, gamma_S):
+    'Hard alpha update rule.'
 
     alpha_1 = np.argmax([np.ndarray.flatten(gamma_S), np.ndarray.flatten(gamma)], axis=0)[:, np.newaxis]
 
@@ -131,7 +132,7 @@ def weighted_training(target=target, alpha=c.alpha, beta=c.beta, repeats=c.repea
             alpha_1, alpha_2 = update_alphas(alpha_1, alpha_2, r_real, r_estim_1, r_estim_2, beta)
 
         elif update_rule=='hard':
-            alpha_1, alpha_2 = new_update_alphas(y_S, rewards, gamma_scalar, gamma_S)
+            alpha_1, alpha_2 = hard_update_alphas(y_S, rewards, gamma_scalar, gamma_S)
         
         elif update_rule=='sigmoid':
             alpha_1, alpha_2 = sigmoid_alpha_update(alpha_1, gamma_S, gamma, beta=beta)
