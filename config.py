@@ -1,14 +1,23 @@
 import numpy as np
 
-dimension = 20
-context_size = 60
-alpha = 0.5
-beta = 0.5
+DIMENSION = 20
+DIMENSION_ALIGN = 14
+CONTEXT_SIZE = 60
+ALPHA = 0.5
+BETA = 0.5
+DELTA = 0.1
+EPSILON = 1
+KAPPA = 0.1
+LAMB = 10
+EPOCHS = 1500
+REPEATS = 50
 
-delta = 0.4
-epsilon = 0.2
-kappa = 0.1
-lamb = 1
-epochs = 1500
-repeats = 50
-gamma = np.sqrt(dimension * np.log(1 + 1/(lamb * dimension) + 2 * np.log(1/delta))) + np.sqrt(lamb)
+try:
+    GAMMA = 0.1 * np.sqrt(DIMENSION *
+                          np.log(1 +
+                                 1/(LAMB * DIMENSION) +
+                                 2 * np.log(1/DELTA))) + np.sqrt(LAMB)
+
+except ZeroDivisionError:
+    print("Lambda cannot be zero!")
+    GAMMA = 0.1
