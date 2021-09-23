@@ -31,7 +31,6 @@ def multiple_alpha_regret_plots(regrets, alphas):
     i = 0
     plt.xlabel('Number of episodes')
     plt.ylabel(r'$\frac{\mathrm{Regret}}{T}$')
-
     for regret in regrets:
         alpha=alphas[i]
         plt.plot(np.cumsum(regret)/np.cumsum(np.ones(len(regret))),
@@ -40,7 +39,6 @@ def multiple_alpha_regret_plots(regrets, alphas):
 
     plt.legend()
     plt.savefig('/home/steven/weighted_bandits/plots/regret_alpha_comparison.png')
-
     plt.show()
     plt.close()
 
@@ -80,6 +78,7 @@ def multiple_beta_regret_over_time_plots(regrets,
 
     if do_plot:
         plt.savefig('/home/steven/weighted_bandits/plots/'+plotsuffix+'.png')
+        plt.show()
         plt.close()
 
 
@@ -97,7 +96,6 @@ def multiple_beta_regret_plots(regrets,
     plt.ylabel('Regret')
 
     if bethas is None:
-
         for regret in regrets:
             plt.errorbar(np.cumsum(np.ones(c.EPOCHS)),
                          np.cumsum(regret),
@@ -108,7 +106,6 @@ def multiple_beta_regret_plots(regrets,
             i += 1
 
     else:
-
         for regret in regrets:
             beta=bethas[i]
             plt.errorbar(np.cumsum(np.ones(c.EPOCHS)),
@@ -123,10 +120,11 @@ def multiple_beta_regret_plots(regrets,
 
     if do_plot:
         plt.savefig('/home/steven/weighted_bandits/plots/'+plotsuffix+'.png')
+        plt.show()
         plt.close()
 
 
-def alpha_plots(alphas, betas=None):
+def alpha_plots(alphas, betas=None, plot_label=None, do_plot=False):
     '''Plot evolution of alpha values for different update rules.'''
     plt.xlabel('Episode')
     plt.ylabel(r'$\mathrm{\alpha}$')
@@ -134,19 +132,18 @@ def alpha_plots(alphas, betas=None):
     i = 0
 
     if betas is None:
-
         for alpha in alphas:
-            plt.plot(alpha)
+            plt.plot(alpha, label=plot_label)
 
     else:
-
         for alpha in alphas:
             beta=betas[i]
-            plt.plot(alpha, label=r"$\beta$ = "+f"{beta}")
+            plt.plot(alpha, label=f"{plot_label}"+r" $\beta$ = "+f"{beta}")
             i += 1
 
     plt.legend()
-    plt.savefig('/home/steven/weighted_bandits/plots/alpha_evol.png')
 
-    plt.show()
-    plt.close()
+    if do_plot:
+        plt.savefig('/home/steven/weighted_bandits/plots/alpha_evol.png')
+        plt.show()
+        plt.close()

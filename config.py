@@ -8,15 +8,15 @@ BETA = 0.5
 DELTA = 0.1
 EPSILON = 1
 KAPPA = 0.1
-LAMB = 10
+LAMB = 1
 EPOCHS = 1500
 REPEATS = 50
 
 try:
-    GAMMA = 0.1 * np.sqrt(DIMENSION *
-                          np.log(1 +
-                                 1/(LAMB * DIMENSION) +
-                                 2 * np.log(1/DELTA))) + np.sqrt(LAMB)
+    GAMMA = EPSILON * np.sqrt(DIMENSION *
+                              np.log(1 +
+                                     1/(LAMB * DIMENSION)) +
+                              2 * np.log(1/DELTA)) + np.sqrt(LAMB)
 
 except ZeroDivisionError:
     print("Lambda cannot be zero!")
