@@ -38,8 +38,8 @@ def source_bandit(theta_opt,
             theta_s[dim_align:] = np.abs(np.random.uniform(size=dimension - dim_align))
             s_norm = np.dot(theta_s[dim_align:],
                             theta_s[dim_align:])/np.sqrt(1 -
-                                                            np.dot(theta_s[:dim_align],
-                                                                   theta_s[:dim_align]))
+                                                         np.dot(theta_s[:dim_align],
+                                                                theta_s[:dim_align]))
             theta_s[dim_align:] /= s_norm
 
     theta_source = np.tile(theta_s, (repeats, 1))
