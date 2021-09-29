@@ -71,7 +71,7 @@ def multiple_beta_regret_over_time_plots(regrets,
                          np.cumsum(regret)/np.cumsum(np.ones(len(regret))),
                          yerr=np.cumsum(errors[i])/np.cumsum(np.ones(len(regret))),
                          label=f"{plot_label}" + r" $\beta$" + f" = {beta}",
-                         alpha=0.25)
+                         alpha=0.15)
             i += 1
 
     plt.legend()
