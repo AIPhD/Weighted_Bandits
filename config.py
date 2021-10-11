@@ -1,22 +1,24 @@
 import numpy as np
 
 DIMENSION = 20
-DIMENSION_ALIGN = 14
+DIMENSION_ALIGN = 20
 CONTEXT_SIZE = 60
-ALPHA = 0.5
+NO_SOURCES = 1
+ALPHA = 1/(NO_SOURCES + 1)
 BETA = 0.5
 DELTA = 0.1
 EPSILON = 1
+SIGMA = 1
 KAPPA = 0.1
 LAMB = 1
-EPOCHS = 1500
-REPEATS = 50
+EPOCHS = 1000
+REPEATS = 200
 
 try:
-    GAMMA = EPSILON * np.sqrt(DIMENSION *
-                              np.log(1 +
-                                     1/(LAMB * DIMENSION)) +
-                              2 * np.log(1/DELTA)) + np.sqrt(LAMB)
+    GAMMA = SIGMA * np.sqrt(DIMENSION *
+                            np.log(1 +
+                                    1/(LAMB * DIMENSION)) +
+                            2 * np.log(1/DELTA)) + np.sqrt(LAMB)
 
 except ZeroDivisionError:
     print("Lambda cannot be zero!")
