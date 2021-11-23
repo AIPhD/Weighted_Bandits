@@ -35,20 +35,21 @@ class TargetContext:
         else:
             theta_s = self.theta_opt.copy()
             ind_list = np.sort(random.sample(range(0, self.dimension), dim_align))
-            theta_s[ind_list] += (kappa * np.random.multivariate_normal(mean=np.zeros(dim_align),
-                                                                        cov=np.identity(dim_align),
-                                                                        size=dim_align)[0])
+            theta_s[ind_list] += (kappa *
+                                  np.random.multivariate_normal(mean=np.zeros(dim_align),
+                                                                cov=c.SIGMA*np.identity(dim_align),
+                                                                size=dim_align)[0])
             theta_s /= np.sqrt(np.dot(theta_s, theta_s))
             old_ind = np.delete(np.arange(self.dimension), ind_list)
 
             if dim_align != self.dimension:
                 theta_s[old_ind] = np.abs(np.random.uniform(size=self.dimension - dim_align))
-                s_norm = np.sqrt(np.dot(theta_s,
-                                        theta_s)/(np.dot(self.theta_opt,
-                                                                   self.theta_opt)))
+                # s_norm = np.sqrt(np.dot(theta_s,
+                #                         theta_s)/(np.dot(self.theta_opt,
+                #                                                    self.theta_opt)))
 
                 # if np.dot(theta_s, theta_s) > 1:
-                theta_s /= s_norm
+                #   theta_s /= s_norm
 
         theta_source = np.tile(theta_s, (repeats, 1))
 

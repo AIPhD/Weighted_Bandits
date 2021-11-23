@@ -33,5 +33,6 @@
 *.app
 __pycache__/
 .vscode/
+source_bandits/
 
 
