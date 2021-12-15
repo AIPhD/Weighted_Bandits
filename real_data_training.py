@@ -18,7 +18,9 @@ def real_weighted_training(target_data,
                            epochs=c.EPOCHS,
                            repeats=1,
                            update_rule='sigmoid',
-                           arms_pulled_plot=False):
+                           arms_pulled_plot=False,
+                           biased_reg=False,
+                           exp_scale=1):
     '''Training algorithm based on weighted UCB function for linear bandits,
        adapted for real data.'''
 
@@ -28,6 +30,11 @@ def real_weighted_training(target_data,
 
     if estim is None:
         estim = np.abs(np.random.uniform(size=len(target_data[0])))
+
+
+    if biased_reg:
+        alpha = 0
+        biased_alpha = 1/no_sources * np.ones((no_sources, repeats))
 
     dimension = len(target_data[0])
     context_size = len(target_data)
@@ -62,7 +69,8 @@ def real_weighted_training(target_data,
                                          source,
                                          theta_estim,
                                          gamma_scalar,
-                                         gamma_s), axis=1)
+                                         gamma_s,
+                                         expl_scale=exp_scale), axis=1)
 
         instance = target_data[index]
         x_history.append(instance)
@@ -71,11 +79,11 @@ def real_weighted_training(target_data,
         rewards[:, i] = r_real
         source = np.einsum('mi,mij->mij', source_scale, source)
         y_s_new = np.einsum('lij,mij->mil', np.asarray(x_history), source)
-        source_scale = np.einsum('il,mil->mi',
-                                 rewards[:, :i+1],
-                                 y_s_new)/np.einsum('mil,mil->mi',
-                                                    y_s_new,
-                                                    y_s_new)
+        # source_scale = np.einsum('il,mil->mi',
+        #                          rewards[:, :i+1],
+        #                          y_s_new)/np.einsum('mil,mil->mi',
+        #                                             y_s_new,
+        #                                             y_s_new)
         # gamma_s = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_s_new[:, :, :i + 1])/
         #                             np.sqrt(np.einsum('lij,lij->li',
         #                                             np.asarray(x_history),
@@ -102,6 +110,22 @@ def real_weighted_training(target_data,
                                                                                   np.newaxis]
         b_vector += r_real[:, np.newaxis] * instance
         theta_estim = np.einsum('ijk,ik->ij', a_inv, b_vector)
+
+        if biased_reg:
+            weighted_source, biased_alpha = t.source_weighting(source,
+                                                               rewards[:, :i+1],
+                                                               y_s_new,
+                                                               biased_alpha,
+                                                               beta)
+            theta_estim -= np.einsum('il,ijl->ij',
+                                     weighted_source,
+                                     np.einsum('ijk,ikl->ijl',
+                                               a_inv,
+                                               np.einsum('nik,nil->ikl',
+                                                         np.asarray(x_history),
+                                                         np.asarray(x_history))) -
+                                     np.tile(np.identity(dimension), (repeats, 1, 1)))
+
         # gamma_t = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_t[:, :i + 1])/
         #                          np.sqrt(np.einsum('lij,lij->li',
         #                                            np.asarray(x_history),
@@ -240,6 +264,7 @@ def real_weighted_matrix_training(target_data,
                                                                                   np.newaxis]
         b_vector += r_real[:, np.newaxis] * instance
         theta_estim = np.einsum('ijk,ik->ij', a_inv, b_vector)
+
 
         if box_bounds:
             alpha_1, alpha_2 = o.least_squares_bounded_opt(np.asarray(x_history),

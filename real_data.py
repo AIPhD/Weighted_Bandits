@@ -106,6 +106,3 @@ def filter_users(user_data, gender=None, age=None, prof=None):
 
 context_data_set = context_vectors(movie_data_set)
 reward_data_set = bandit_rewards(user_data_set, rating_data_set, movie_data_set)
-test_data_1, test_rewards_1 = extract_context_for_users(1, context_data_set, reward_data_set)
-filtered_users = filter_users(np.asarray(user_data_set), gender='M', age=66, prof='17')
-print('test')

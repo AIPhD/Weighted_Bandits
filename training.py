@@ -8,7 +8,15 @@ import config as c
 matplotlib.use('TKAgg')
 
 
-def ucb_weighted(x_instances, a_inv, alpha_1, alpha_2, theta_s, theta_t, gamma_t, gamma_s=0):
+def ucb_weighted(x_instances,
+                 a_inv,
+                 alpha_1,
+                 alpha_2,
+                 theta_s,
+                 theta_t,
+                 gamma_t,
+                 gamma_s=0,
+                 expl_scale=1):
     '''UCB function based on weighted contributions of both domains.'''
 
     reward_estim_s = np.einsum('mi,mij->ij', alpha_1, np.einsum('jk,mik->mij',
@@ -16,11 +24,11 @@ def ucb_weighted(x_instances, a_inv, alpha_1, alpha_2, theta_s, theta_t, gamma_t
                                                                 theta_s))
     reward_estim_t = alpha_2 * np.einsum('jk,ik->ij', x_instances, theta_t)
     gamma = np.einsum('mi,mi->i', alpha_1, gamma_s)[:, np.newaxis] + alpha_2 * gamma_t
-    expl = 1 * gamma * np.sqrt(np.einsum('jk,ikj->ij',
-                                           x_instances,
-                                           np.einsum('ijk,lk->ijl',
-                                                     a_inv,
-                                                     x_instances)))
+    expl = expl_scale * gamma * np.sqrt(np.einsum('jk,ikj->ij',
+                                                  x_instances,
+                                                  np.einsum('ijk,lk->ijl',
+                                                            a_inv,
+                                                            x_instances)))
     return reward_estim_s + reward_estim_t + expl
 
 
@@ -108,15 +116,19 @@ def hard_update_alphas(gamma, gamma_s, no_source=c.NO_SOURCES):
     return alpha[:no_source], alpha[no_source:].T
 
 
-def corrected_hard_alphas(source, theta_estim, y_s_new, y_t, no_source=c.NO_SOURCES):
-    '''Corrected hard alpha update rule'''
-    diff_norm_squared = np.einsum('mij,mij->mi', source - theta_estim, source - theta_estim)
-    diff_reward_squared = np.einsum('mil,mil->mi', y_s_new - y_t, y_s_new - y_t)
-    delta_s = np.sqrt(diff_norm_squared + diff_reward_squared)
-    ind_min = np.argmin(np.append(delta_s, np.zeros((1, c.REPEATS)), axis=0), axis=0)
-    alpha = np.zeros((no_source + 1, c.REPEATS))
-    alpha[ind_min, np.arange(c.REPEATS)] +=1
-    return alpha[:no_source], alpha[no_source:].T
+def source_weighting(source, y_real, y_s, source_weights, beta=c.BETA):
+    '''Weighting of sources in biased regularization algorithm.'''
+    alpha_sources = source_weights * np.exp(-beta *
+                                            np.sqrt(np.einsum('mij,mij->mi',
+                                                              y_s - y_real,
+                                                              y_s - y_real)))/np.einsum('mi,mi->i',
+                                                                                        source_weights,
+                                                                                        np.exp(-beta *
+                                                                                               np.sqrt(np.einsum('mij,mij->mi',
+                                                                                                                 y_s - y_real,
+                                                                                                                 y_s - y_real))))
+    weighted_source = np.einsum('mi,mij->ij', alpha_sources, source)
+    return weighted_source, alpha_sources
 
 
 def weighted_training(target,
@@ -128,19 +140,25 @@ def weighted_training(target,
                       repeats=c.REPEATS,
                       theta_conf=None,
                       update_rule='hard',
-                      probalistic='False',
-                      arms_pulled_plot=False):
+                      probalistic=False,
+                      biased_reg=False,
+                      arms_pulled_plot=False,
+                      exp_scale=1):
     '''Training algorithm based on weighted UCB function for linear bandits.'''
 
     theta_estim = estim/np.sqrt(np.dot(estim, estim))
-    source_scale = np.ones((no_sources, c.REPEATS))
+    # source_scale = np.ones((no_sources, c.REPEATS))
     theta_estim = np.tile(theta_estim, (repeats, 1))
+
+    if biased_reg:
+        alpha = 0
+        biased_alpha = 1/no_sources * np.ones((no_sources, repeats))
+
     alpha_1 = alpha * np.ones((no_sources, repeats))
     alpha_2 = np.ones((repeats, 1)) - np.sum(alpha_1, axis=0)[:, np.newaxis]
     alpha_evol = np.zeros((repeats, c.EPOCHS))
     target_data = target.target_context
     theta_target = np.tile(target.theta_opt, (repeats, 1))
-    # gamma = np.tile(c.GAMMA, (repeats, 1))
     gamma_scalar = np.tile(c.GAMMA, (repeats, 1))
     gamma_s = c.GAMMA * np.ones((no_sources, repeats))
     no_pulls = np.zeros((repeats, c.CONTEXT_SIZE))
@@ -166,7 +184,7 @@ def weighted_training(target,
                                               alpha_1,
                                               source,
                                               theta_estim,
-                                              gamma_scalar,
+                                              gamma_t,
                                               gamma_s), axis=1)
 
         else:
@@ -177,7 +195,8 @@ def weighted_training(target,
                                            source,
                                            theta_estim,
                                            gamma_scalar,
-                                           gamma_s), axis=1)
+                                           gamma_s,
+                                           expl_scale=exp_scale), axis=1)
 
         index_opt = np.argmax(np.einsum('ij,kj->ik',theta_target, target_data), axis=1)
         instance = target_data[index]
@@ -201,13 +220,13 @@ def weighted_training(target,
         r_real = np.einsum('ij,ij->i', theta_target, instance) + noise
         alpha_evol[:, i] = np.ndarray.flatten(np.asarray(alpha_2))
         rewards[:, i] = r_real
-        s_reward_history = np.einsum('lij,mij->lmi', np.asarray(x_history), source)
-        source_scale = np.einsum('il,lmi->mi',
-                                 rewards[:, :i+1],
-                                 s_reward_history)/np.einsum('lmi,lmi->mi',
-                                                             s_reward_history,
-                                                             s_reward_history)
-        source = np.einsum('mi,mij->mij', source_scale, source)
+        # s_reward_history = np.einsum('lij,mij->lmi', np.asarray(x_history), source)
+        # source_scale = np.einsum('il,lmi->mi',
+        #                          rewards[:, :i+1],
+        #                          s_reward_history)/np.einsum('lmi,lmi->mi',
+        #                                                      s_reward_history,
+        #                                                      s_reward_history)
+        # source = np.einsum('mi,mij->mij', source_scale, source)
         y_s_new = np.einsum('lij,mij->mil', np.asarray(x_history), source)
         y_t = np.einsum('lij,ij->li', np.asarray(x_history), theta_estim).T
 
@@ -220,9 +239,9 @@ def weighted_training(target,
                                                             y_s_new - rewards[:, :i+1],
                                                             y_s_new - rewards[:, :i+1]))
 
-            # gamma_s = np.sqrt(1 + np.einsum('mij,mij->mi',
-            #                                 y_s_new - rewards[:, :i+1],
-            #                                 y_s_new - rewards[:, :i+1]))
+            # gamma_s = np.sqrt(0.5 + np.einsum('mij,mij->mi',
+            #                                          y_s_new - rewards[:, :i+1],
+            #                                          y_s_new - rewards[:, :i+1]))
         else:
             gamma_s = np.sqrt(np.asarray(theta_conf +
                                          np.einsum('mij,mij->mi',
@@ -245,15 +264,31 @@ def weighted_training(target,
                                                                                   np.newaxis]
         b_vector += r_real[:, np.newaxis] * instance
         theta_estim = np.einsum('ijk,ik->ij', a_inv, b_vector)
-        # gamma_t = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_t[:, :i + 1])/
-        #                          np.sqrt(np.einsum('lij,lij->li',
-        #                                            np.asarray(x_history),
-        #                                            np.asarray(x_history))).T,
-        #                          axis=1) + np.einsum('ij,ij->i',
-        #                                              y_t - rewards[:, :i+1],
-        #                                              y_t - rewards[:, :i+1]))[:, np.newaxis]
+
+        if biased_reg:
+            weighted_source, biased_alpha = source_weighting(source,
+                                                             rewards[:, :i+1],
+                                                             y_s_new,
+                                                             biased_alpha,
+                                                             beta)
+            theta_estim -= np.einsum('il,ijl->ij',
+                                     weighted_source,
+                                     np.einsum('ijk,ikl->ijl',
+                                               a_inv,
+                                               np.einsum('nik,nil->ikl',
+                                                         np.asarray(x_history),
+                                                         np.asarray(x_history))) -
+                                     np.tile(np.identity(c.DIMENSION), (repeats, 1, 1)))
+
+        gamma_t = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_t[:, :i + 1])/
+                                 np.sqrt(np.einsum('lij,lij->li',
+                                                   np.asarray(x_history),
+                                                   np.asarray(x_history))).T,
+                                 axis=1) + np.einsum('ij,ij->i',
+                                                     y_t - rewards[:, :i+1],
+                                                     y_t - rewards[:, :i+1]))[:, np.newaxis]
         gamma_scalar = np.asarray([np.sqrt(c.LAMB) +
-                                   np.sqrt(2 * np.log(np.sqrt(np.linalg.det(a_matrix))/
+                                   np.sqrt(1 * np.log(np.sqrt(np.linalg.det(a_matrix))/
                                                       (np.sqrt(c.LAMB**c.DIMENSION) * c.DELTA)))]).T
 
         if i == c.DIMENSION * 1 and update_rule=='soft':
@@ -263,22 +298,15 @@ def weighted_training(target,
             alpha_1, alpha_2 = update_alphas(alpha_1, alpha_2, r_real, r_estim_1, r_estim_2, beta)
 
         elif update_rule=='hard':
-            alpha_1, alpha_2 = hard_update_alphas(gamma_scalar,
+            alpha_1, alpha_2 = hard_update_alphas(gamma_t,
                                                   gamma_s,
                                                   no_source=no_sources)
-
-        elif update_rule=='corrected hard':
-            alpha_1, alpha_2 = corrected_hard_alphas(source,
-                                                     theta_estim,
-                                                     y_s_new,
-                                                     y_t,
-                                                     no_source=no_sources)
 
         elif update_rule=='sigmoid':
             alpha_1, alpha_2 = sigmoid_alpha_update(alpha_1,
                                                     alpha_2,
                                                     gamma_s,
-                                                    gamma_scalar,
+                                                    gamma_t,
                                                     beta=beta)
 
         no_pulls[np.arange(repeats), index] += 1
@@ -360,11 +388,11 @@ def weighted_matrix_training(target,
         rewards[:, i] = r_real
         y_t = np.einsum('lij,ij->il', np.asarray(x_history), theta_estim)
         y_s_new = np.einsum('lij,ij->il', np.asarray(x_history), source)
-        source_scale = np.einsum('il,il->i',
-                                 rewards[:, :i+1],
-                                 y_s_new)/np.einsum('il,il->i',
-                                                    y_s_new,
-                                                    y_s_new)
+        # source_scale = np.einsum('il,il->i',
+        #                          rewards[:, :i+1],
+        #                          y_s_new)/np.einsum('il,il->i',
+        #                                             y_s_new,
+        #                                             y_s_new)
         # x_theta = np.asarray(x_history)[np.argmax(np.abs(rewards[:, :i + 1] - y_s[:, :, :i + 1]),
         #                                           axis=2),
         #                                 np.arange(repeats)]
@@ -475,7 +503,9 @@ def compared_betas(target_class,
                    estim=np.abs(np.random.uniform(size=c.DIMENSION)),
                    update_rule='sigmoid',
                    theta_conf=None,
-                   probalistic=False):
+                   biased_reg=False,
+                   probalistic=False,
+                   exp_scale=1):
     '''Train on the same context set with differently initialized alphas.'''
 
     regrets = []
@@ -491,7 +521,9 @@ def compared_betas(target_class,
                                                               alpha=1/(len(source)+1),
                                                               update_rule=update_rule,
                                                               probalistic=probalistic,
-                                                              theta_conf=theta_conf)
+                                                              theta_conf=theta_conf,
+                                                              biased_reg=biased_reg,
+                                                              exp_scale=exp_scale)
 
         regrets.append(avr_regret)
         alpha_evol.append(avr_alpha)

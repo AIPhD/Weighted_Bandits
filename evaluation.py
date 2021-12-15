@@ -94,7 +94,7 @@ def multiple_beta_regret_plots(regrets,
                                errors=None,
                                bethas=None,
                                plot_label=None,
-                               plotsuffix='regret_beta_comparison',
+                               plotsuffix='regret_comparison',
                                directory='sources',
                                do_plot=False,
                                opt_difference=None):
@@ -159,7 +159,7 @@ def multiple_beta_regret_plots(regrets,
     plt.legend()
 
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_{plotsuffix}.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.png')
         # plt.show()
         plt.close()
 
@@ -200,8 +200,7 @@ def multiple_beta_std_regret_plots(std_dev,
     plt.legend()
 
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_'
-                    +plotsuffix+'regret_std_beta_comparison.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_{plotsuffix}regret_std_beta_comparison.png')
         # plt.show()
         plt.close()
 
@@ -232,6 +231,6 @@ def alpha_plots(alphas,
     plt.legend()
 
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_{plotsuffix}.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.png')
         # plt.show()
         plt.close()

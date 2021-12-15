@@ -22,7 +22,7 @@ def least_squares_bounded_opt(x_data, y_rewards, theta_s, theta_t):
 
 
 def least_squares_opt(x_data, y_rewards, theta_s, theta_t):
-    '''Optimize least squares problem with linear constraints.'''
+    '''Optimize least squares problem without linear constraints.'''
     delta_theta = theta_s - theta_t
     dimension = len(theta_t[0])
     repeats = len(theta_t)

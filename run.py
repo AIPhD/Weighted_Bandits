@@ -1,5 +1,5 @@
 import numpy as np
-# import synthetic_data as sd
+import synthetic_data as sd
 import config as c
 import training as t
 import evaluation as e
@@ -10,11 +10,15 @@ import real_data_training as rdt
 def main():
     '''Main function used to evaluate different weighted bandit settings.'''
 
-    # estim = np.abs(np.random.uniform(size=len(real_target[0])))
+    filter_data = [['M', 56, '13', False],
+                   ['F', 18, '0', True],
+                   ['F', 35, '12', True]]
+
+    for filt in filter_data:
+        real_data_comparison(gender=filt[0], age=filt[1], prof=filt[2], multi_source=filt[3])
+
+    # estim = np.abs(np.random.uniform(size=c.DIMENSION))
     # target_class = sd.TargetContext()
-
-    real_data_comparison(gender='F', age=25, prof='12')
-
     # sources=[]
 
     # for i in range(1, c.NO_SOURCES + 1):
@@ -26,10 +30,10 @@ def main():
     #     source_comparison(target_class, estim, source, i,theta_conf=conf, probalistic=True)
     #     source_comparison(target_class, estim, source, i)
 
-    # for i in range(16, c.DIMENSION_ALIGN + 1):
+    # for i in range(30, c.DIMENSION_ALIGN + 1):
     #     source = target_class.source_bandits(c.NO_SOURCES, dim_align=i)
-    #     align_comparison(target_class, source, estim, i, probalistic=True, soft_comparison=True)
-    #     align_comparison(target_class, source, estim, i, soft_comparison=True)
+    #     align_comparison(target_class, source, estim, i, probalistic=True, soft_comparison=False)
+    #     align_comparison(target_class, source, estim, i, soft_comparison=False)
 
     # source = target_class.source_bandits(c.NO_SOURCES, dim_align=20)
     # matrix_comparison(target_class, source, estim)
@@ -39,19 +43,31 @@ def real_data_comparison(gender=None,
                          age=None,
                          prof=None,
                          context=rd.context_data_set,
-                         rewards=rd.reward_data_set):
+                         rewards=rd.reward_data_set,
+                         multi_source=False):
     '''Compares multiple algorithms on real data'''
 
     real_sources = []
+    dimension = len(context[0])
     filtered_users = rd.filter_users(np.asarray(rd.user_data_set),
                                      gender=gender,
                                      age=age,
                                      prof=prof)
     filtered_user_index = np.asarray([int(i) for i in filtered_users[:, 0]]) - 1
-    real_target, real_rewards = rd.extract_context_for_users(filtered_user_index[-3],
+    train_user_ind = np.random.randint(0, len(filtered_users[:, 0]))
+    real_target, real_rewards = rd.extract_context_for_users(filtered_user_index[train_user_ind],
                                                              context,
                                                              rewards)
-    source_indices = [filtered_user_index[-2]]
+
+    if multi_source:
+        source_indices = np.delete(filtered_user_index, train_user_ind)
+        mult_str = '_multi'
+
+    else:
+        source_user_ind = np.random.randint(0, len(filtered_users[:, 0]) - 1)
+        source_indices = [np.delete(filtered_user_index, train_user_ind)[source_user_ind]]
+        mult_str = ''
+
     estim = np.abs(np.random.uniform(size=len(real_target[0])))
 
     for i in source_indices:
@@ -65,7 +81,8 @@ def real_data_comparison(gender=None,
                                                estim=estim,
                                                alpha=0,
                                                no_sources=len(source_indices),
-                                               update_rule='soft')
+                                               update_rule='sigmoid',
+                                               exp_scale=1)
 
     hard_output = rdt.real_weighted_training(real_target,
                                              real_rewards,
@@ -73,13 +90,24 @@ def real_data_comparison(gender=None,
                                              estim=estim,
                                              alpha=1/(len(source_indices)),
                                              no_sources=len(source_indices),
-                                             update_rule='hard')
+                                             update_rule='hard',
+                                             exp_scale=1)
 
-    matrix_output = rdt.real_weighted_matrix_training(real_target,
-                                                      real_rewards,
-                                                      source=real_source[0],
-                                                      estim=estim,
-                                                      alpha=1/(len(source_indices)+1))
+    biased_output = rdt.real_weighted_training(real_target,
+                                               real_rewards,
+                                               source=real_source,
+                                               estim=estim,
+                                               biased_reg=True,
+                                               no_sources=len(source_indices),
+                                               update_rule=None,
+                                               exp_scale=0.1)
+
+    if not multi_source:
+        matrix_output = rdt.real_weighted_matrix_training(real_target,
+                                                          real_rewards,
+                                                          source=real_source[0],
+                                                          estim=estim,
+                                                          alpha=1/(len(source_indices)+1))
 
     sigmoid_output = rdt.real_weighted_training(real_target,
                                                 real_rewards,
@@ -87,30 +115,44 @@ def real_data_comparison(gender=None,
                                                 estim=estim,
                                                 alpha=1/(len(source_indices)+1),
                                                 no_sources=len(source_indices),
-                                                update_rule='sigmoid')
+                                                update_rule='sigmoid',
+                                                exp_scale=1)
 
     e.multiple_beta_regret_plots([linucb_output[1]],
                                  plot_label='linUCB')
     e.multiple_beta_regret_plots([sigmoid_output[1]],
                                  bethas=[0.1],
                                  plot_label='sigmoid')
-    e.multiple_beta_regret_plots([matrix_output[1]],
-                                 plot_label='matrix weighted')
+    e.multiple_beta_regret_plots([biased_output[1]],
+                                 bethas=[0.1],
+                                 plot_label='biased regularization')
+
+    if not multi_source:
+        e.multiple_beta_regret_plots([matrix_output[1]],
+                                     plot_label='matrix weighted')
+
     e.multiple_beta_regret_plots([hard_output[1]],
                                  directory='real_dim_align_comparison',
                                  plot_label='hard',
+                                 plotsuffix=f'real_regret_comparison_{gender}_{age}_{prof}{mult_str}',
                                  do_plot=True)
 
-    e.alpha_plots([18*linucb_output[2]],
+    e.alpha_plots([dimension * linucb_output[2]],
                   plot_label='linUCB')
-    e.alpha_plots([18*hard_output[2]],
+    e.alpha_plots([dimension * hard_output[2]],
                   plot_label='hard')
-    e.alpha_plots([18*sigmoid_output[2]],
-                  plot_label='sigmoid')
-    e.alpha_plots([matrix_output[2]],
+    e.alpha_plots([dimension * biased_output[2]],
+                  plot_label='biased Regularization')
+
+    if not multi_source:
+        e.alpha_plots([matrix_output[2]],
+                      plot_label='matrix')
+
+    e.alpha_plots([dimension * sigmoid_output[2]],
+                  plot_label='sigmoid',
                   do_plot=True,
                   directory='alpha_comparison',
-                  plot_label='matrix')
+                  plotsuffix=f'real_weight_comparison_{gender}_{age}_{prof}{mult_str}')
 
 
 def matrix_comparison(target_class,
@@ -129,10 +171,17 @@ def matrix_comparison(target_class,
                                                                          source=source,
                                                                          estim=estim,
                                                                          alpha=0,
-                                                                         update_rule='soft')
+                                                                         update_rule=None)
+    regret_bias, alpha_bias, regret_std_bias = t.weighted_training(target=target_class,
+                                                                   source=source,
+                                                                   estim=estim,
+                                                                   alpha=0,
+                                                                   update_rule=None,
+                                                                   biased_reg=True)
     regret_hard, alpha_hard, regret_std_hard = t.weighted_training(target=target_class,
                                                                    source=source,
-                                                                   estim=estim)
+                                                                   estim=estim,
+                                                                   exp_scale=0.1)
 
 
     e.multiple_beta_regret_plots([regret_linucb],
@@ -141,10 +190,14 @@ def matrix_comparison(target_class,
     e.multiple_beta_regret_plots([regret_hard],
                                  [regret_std_hard],
                                  plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_regret_plots([regret_bias],
+                                 [regret_std_bias],
+                                 plot_label='Biased Regularization')
     e.multiple_beta_regret_plots([regret_matrix],
                                  [regret_std_matrix],
                                  plot_label='matrix weighted',
                                  directory='matrix_comparison',
+                                 plotsuffix='regret_matrix_comparison',
                                  do_plot=True,
                                  opt_difference=np.round(theta_diff, 3))
 
@@ -152,19 +205,23 @@ def matrix_comparison(target_class,
                                      plot_label='linUCB')
     e.multiple_beta_std_regret_plots([regret_std_hard],
                                      plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_std_regret_plots([regret_std_bias],
+                                     plot_label='Biased regularization')
     e.multiple_beta_std_regret_plots([regret_std_matrix],
                                      plot_label='matrix weighted',
                                      directory='matrix_comparison/std',
                                      do_plot=True,
                                      opt_difference=np.round(theta_diff, 3))
 
-    e.alpha_plots(dimension*[alpha_linucb],
+    e.alpha_plots(dimension * [alpha_linucb],
                   plot_label='linUCB')
-    e.alpha_plots(dimension*[alpha_hard],
+    e.alpha_plots(dimension * [alpha_hard],
                   plot_label='hard')
+    e.alpha_plots(dimension * [alpha_bias], plot_label='Biased Regularization')
     e.alpha_plots([alpha_matrix],
                   do_plot=True,
                   plot_label='matrix weighted',
+                  plotsuffix='alpha_matrix_comparison',
                   directory='alpha_comparison')
 
 
@@ -184,19 +241,31 @@ def align_comparison(target_class,
     else:
         prob_string = ''
 
-    betas = [0.1]
+    betas = [0.1, 1]
     opt = target_class.theta_opt
     theta_diff = np.min(np.sqrt(np.einsum('mj,mj->m', opt-source[:, 0, :], opt-source[:, 0, :])))
     regret_linucb, alpha_linucb, regret_std_linucb = t.weighted_training(target=target_class,
                                                                          source=source,
                                                                          estim=estim,
                                                                          alpha=0,
-                                                                         update_rule='soft',
-                                                                         probalistic=probalistic)
+                                                                         update_rule=None,
+                                                                         probalistic=probalistic,
+                                                                         exp_scale=0.1)
+
+    regret_bias, alpha_bias, regret_std_bias = t.weighted_training(target=target_class,
+                                                                   source=source,
+                                                                   estim=estim,
+                                                                   alpha=0,
+                                                                   update_rule=None,
+                                                                   probalistic=probalistic,
+                                                                   biased_reg=True,
+                                                                   exp_scale=0.1)
+
     regret_hard, alpha_hard, regret_std_hard = t.weighted_training(target=target_class,
                                                                    source=source,
                                                                    estim=estim,
-                                                                   probalistic=probalistic)
+                                                                   probalistic=probalistic,
+                                                                   exp_scale=0.1)
 
     if soft_comparison:
         regret_soft, alpha_soft, regret_std_soft = t.compared_betas(target_class,
@@ -211,7 +280,9 @@ def align_comparison(target_class,
                                                                          betas,
                                                                          estim=estim,
                                                                          update_rule='sigmoid',
-                                                                         probalistic=probalistic)
+                                                                         probalistic=probalistic,
+                                                                         exp_scale=0.1)
+
     e.multiple_beta_regret_plots([regret_linucb],
                                  [regret_std_linucb],
                                  plot_label='linUCB')
@@ -226,6 +297,9 @@ def align_comparison(target_class,
                                      directory='dim_align_comparison',
                                      plot_label='softmax')
 
+    e.multiple_beta_regret_plots([regret_bias],
+                                 [regret_std_bias],
+                                 plot_label='Biased Regularization')
     e.multiple_beta_regret_plots(regret_sigmoid,
                                  regret_std_sigmoid,
                                  betas,
@@ -239,6 +313,8 @@ def align_comparison(target_class,
                                      plot_label='linUCB')
     e.multiple_beta_std_regret_plots([regret_std_hard],
                                      plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_std_regret_plots([regret_std_bias],
+                                     plot_label='Biased regularization')
 
     if soft_comparison:
         e.multiple_beta_regret_over_time_plots(regret_soft,
@@ -261,6 +337,9 @@ def align_comparison(target_class,
     e.multiple_beta_regret_over_time_plots([regret_hard],
                                            [regret_std_hard],
                                            plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_regret_over_time_plots([regret_bias],
+                                           [regret_std_bias],
+                                           plot_label='Biased regularization')
     e.multiple_beta_regret_over_time_plots(regret_sigmoid,
                                            regret_std_sigmoid,
                                            betas,
@@ -277,6 +356,7 @@ def align_comparison(target_class,
                       plot_label='softmax')
     e.alpha_plots([alpha_linucb], plot_label='linUCB')
     e.alpha_plots([alpha_hard], plot_label=r'Hard $\alpha$ update rule')
+    e.alpha_plots([alpha_bias], plot_label='Biased Regularization')
     e.alpha_plots(alpha_sigmoid,
                   betas,
                   do_plot=True,
@@ -301,7 +381,7 @@ def source_comparison(target_class,
     else:
         prob_string = ''
 
-    betas = [0.1, 0.01]
+    betas = [0.1]
     opt = target_class.theta_opt
     theta_diff = np.min(np.sqrt(np.einsum('mj,mj->m', opt-source[:, 0, :], opt-source[:, 0, :])))
     regret_linucb, alpha_linucb, regret_std_linucb = t.weighted_training(target=target_class,
@@ -310,13 +390,15 @@ def source_comparison(target_class,
                                                                          no_sources=i,
                                                                          alpha=0,
                                                                          theta_conf=theta_conf,
-                                                                         update_rule='soft',
+                                                                         update_rule=None,
+                                                                         exp_scale=0.1,
                                                                          probalistic=probalistic)
     regret_hard, alpha_hard, regret_std_hard = t.weighted_training(target=target_class,
                                                                    source=source,
                                                                    estim=estim,
                                                                    no_sources=i,
                                                                    alpha=1/(i+1),
+                                                                   exp_scale=0.1,
                                                                    probalistic=probalistic)
     # regret_soft, alpha_soft, regret_std_soft = t.compared_betas(target_class,
     #                                                             source,
@@ -328,14 +410,27 @@ def source_comparison(target_class,
                                                                          source,
                                                                          betas,
                                                                          estim=estim,
+                                                                         exp_scale=0.1,
                                                                          update_rule='sigmoid',
                                                                          probalistic=probalistic)
+    regret_biased, alpha_biased, regret_std_biased = t.compared_betas(target_class,
+                                                                      source,
+                                                                      betas,
+                                                                      estim=estim,
+                                                                      biased_reg=True,
+                                                                      exp_scale=0.1,
+                                                                      update_rule=None,
+                                                                      probalistic=probalistic)
     e.multiple_beta_regret_plots([regret_linucb],
                                  [regret_std_linucb],
                                  plot_label='linUCB')
     e.multiple_beta_regret_plots([regret_hard],
                                  [regret_std_hard],
                                  plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_regret_plots(regret_biased,
+                                 regret_std_biased,
+                                 betas,
+                                 plot_label='Biased regularization')
     e.multiple_beta_regret_plots(regret_sigmoid,
                                  regret_std_sigmoid,
                                  betas,
@@ -346,11 +441,12 @@ def source_comparison(target_class,
                                  opt_difference=np.round(theta_diff, 3))
 
     e.multiple_beta_std_regret_plots([regret_std_linucb],
-                                     betas,
                                      plot_label='linUCB')
     e.multiple_beta_std_regret_plots([regret_std_hard],
-                                     betas,
                                      plot_label=r'Hard $\alpha$ update rule')
+    e.multiple_beta_std_regret_plots(regret_std_biased,
+                                     betas,
+                                     plot_label='Biased regularization')
     e.multiple_beta_std_regret_plots(regret_std_sigmoid,
                                      betas,
                                      plot_label='sigmoid',
@@ -375,6 +471,10 @@ def source_comparison(target_class,
         e.multiple_beta_regret_over_time_plots([regret_hard],
                                                [regret_std_hard],
                                                plot_label=r'Hard $\alpha$ update rule')
+        e.multiple_beta_regret_over_time_plots(regret_biased,
+                                               regret_std_biased,
+                                               betas,
+                                               plot_label='Biased regularization')
         e.multiple_beta_regret_over_time_plots(regret_sigmoid,
                                                regret_std_sigmoid,
                                                betas,
@@ -394,6 +494,7 @@ def source_comparison(target_class,
     e.alpha_plots([alpha_linucb], plot_label='linUCB')
     # e.alpha_plots(alpha_soft, betas, do_plot=True, plot_label='softmax')
     e.alpha_plots([alpha_hard], plot_label=r'Hard $\alpha$ update rule')
+    e.alpha_plots(alpha_biased, betas, plot_label='Biased regularization')
     e.alpha_plots(alpha_sigmoid,
                   betas,
                   do_plot=True,
