@@ -11,7 +11,7 @@ EPSILON = 1
 SIGMA = 1/np.sqrt(2 * np.pi)
 KAPPA = 0.1
 LAMB = 1
-EPOCHS = 200
+EPOCHS = 500
 REPEATS = 99
 
 try:

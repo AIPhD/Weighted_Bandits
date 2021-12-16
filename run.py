@@ -10,9 +10,40 @@ import real_data_training as rdt
 def main():
     '''Main function used to evaluate different weighted bandit settings.'''
 
-    filter_data = [['M', 56, '13', False],
-                   ['F', 18, '0', True],
-                   ['F', 35, '12', True]]
+    filter_data = [
+                #    ['F', 18, '0', True],
+                #    ['F', 18, '0', False],
+                #    ['F', 35, '12', True],
+                #    ['F', 35, '12', False],
+                #    ['F', 25, '4', False],
+                #    ['F', 25, '4', True],
+                #    ['F', 35, '6', False],
+                #    ['F', 35, '6', True],
+                #    ['F', 35, '9', False],
+                #    ['F', 35, '9', True],
+                #    ['F', 35, '11', True],
+                #    ['F', 35, '11', False],
+                #    ['F', 35, '19', False],
+                #    ['F', 35, '19', True],
+                #    ['F', 45, '15', True],
+                #    ['F', 45, '15', False],
+                #    ['M', 18, '0', True],
+                   ['M', 18, '0', False],
+                #    ['M', 35, '2', False],
+                #    ['M', 35, '2', True],
+                #    ['M', 35, '3', False],
+                #    ['M', 35, '3', True],
+                #    ['M', 35, '15', False],
+                #    ['M', 35, '15', True],
+                #    ['M', 35, '17', False],
+                #    ['M', 35, '17', True],
+                #    ['M', 45, '3', True],
+                #    ['M', 45, '3', False],
+                #    ['M', 45, '20', False],
+                   ['M', 45, '20', True],
+                #    ['M', 56, '13', True],
+                #    ['M', 56, '13', False]
+                   ]
 
     for filt in filter_data:
         real_data_comparison(gender=filt[0], age=filt[1], prof=filt[2], multi_source=filt[3])
@@ -100,7 +131,7 @@ def real_data_comparison(gender=None,
                                                biased_reg=True,
                                                no_sources=len(source_indices),
                                                update_rule=None,
-                                               exp_scale=0.1)
+                                               exp_scale=1)
 
     if not multi_source:
         matrix_output = rdt.real_weighted_matrix_training(real_target,

@@ -91,7 +91,7 @@ def real_weighted_training(target_data,
         #                             axis=2)**2 + np.einsum('mij,mij->mi',
         #                                                 y_s_new - rewards[:, :i+1],
         #                                                 y_s_new - rewards[:, :i+1]))
-        gamma_s = np.sqrt(1 + np.einsum('mij,mij->mi',
+        gamma_s = np.sqrt(2 + np.einsum('mij,mij->mi',
                                         y_s_new - rewards[:, :i+1],
                                         y_s_new - rewards[:, :i+1]))
         a_matrix += np.einsum('ij,ik->ijk', instance, instance)
