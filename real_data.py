@@ -44,7 +44,7 @@ def context_vectors(movie_data):
         for j in range(0, len(genre_list)):
             if genre_list[j] in genres:
                 context_data[i][j] += 1
-        context_data[i] /= np.sum(context_data[i])
+        context_data[i] /= np.sqrt(np.sum(context_data[i]))
 
     return context_data
 

@@ -20,7 +20,7 @@ matplotlib.rc('font', **font)
 def regret_plot(evol, ylabel='Cummulative regret'):
     '''Plot function to showcase regret over all episodes.'''
 
-    plt.xlabel('Number of episodes')
+    plt.xlabel('Timestep')
     plt.ylabel(ylabel)
     plt.plot(evol)
     plt.show()
@@ -30,12 +30,12 @@ def multiple_alpha_regret_plots(regrets, alphas):
     '''Plot multiple regret evolutions for comparison.'''
 
     i = 0
-    plt.xlabel('Number of episodes')
+    plt.xlabel('Timestep')
     plt.ylabel(r'$\frac{\mathrm{Regret}}{T}$')
     for regret in regrets:
         alpha=alphas[i]
         plt.plot(regret/np.cumsum(np.ones(len(regret))),
-                 label=f"$\alpha$ = {alpha}")
+                 label=f"$\alpha_T$ = {alpha}")
         i += 1
 
     plt.legend()
@@ -54,7 +54,7 @@ def multiple_beta_regret_over_time_plots(regrets,
     '''Plot multiple regret evolutions for comparison.'''
 
     i = 0
-    plt.xlabel('Episodes')
+    plt.xlabel('Timestep')
     plt.ylabel(r'$\frac{\mathrm{Regret}}{T}$')
     plt.ylim(0, 2)
 
@@ -101,26 +101,27 @@ def multiple_beta_regret_plots(regrets,
     '''Plot multiple regret evolutions for comparison.'''
 
     i = 0
-    plt.xlabel('Episodes')
+    plt.xlabel('Timestep')
     plt.ylabel('Regret')
     #plt.ylim(0, 150)
 
     if bethas is None:
         for regret in regrets:
             if errors is not None:
-                plt.fill_between(np.cumsum(np.ones(c.EPOCHS)),
-                                 regret + errors[i],
-                                 regret - errors[i],
+                plt.errorbar(np.cumsum(np.ones(c.EPOCHS)),
+                             regret,
+                                 yerr=errors[i],
                                  label=plot_label,
-                                 alpha=0.25)
-                plt.plot(np.arange(c.EPOCHS),
-                         regret + errors[i],
-                         alpha=0.25,
-                         ls='--')
-                plt.plot(np.arange(c.EPOCHS),
-                         regret - errors[i],
-                         alpha=0.25,
-                         ls='--')
+                                 alpha=0.75,
+                                 errorevery=49)
+                # plt.plot(np.arange(c.EPOCHS),
+                #          regret + errors[i],
+                #          alpha=0.25,
+                #          ls='--')
+                # plt.plot(np.arange(c.EPOCHS),
+                #          regret - errors[i],
+                #          alpha=0.25,
+                #          ls='--')
                 i += 1
 
             else:
@@ -132,19 +133,20 @@ def multiple_beta_regret_plots(regrets,
         for regret in regrets:
             beta=bethas[i]
             if errors is not None:
-                plt.fill_between(np.cumsum(np.ones(c.EPOCHS)),
-                                 regret + errors[i],
-                                 regret - errors[i],
+                plt.errorbar(np.cumsum(np.ones(c.EPOCHS)),
+                                 regret,
+                                 yerr=errors[i],
                                  label=f"{plot_label}"+r" $\beta$ = "+f"{beta}",
-                                 alpha=0.25)
-                plt.plot(np.arange(c.EPOCHS),
-                         regret + errors[i],
-                         alpha=0.25,
-                         ls='--')
-                plt.plot(np.arange(c.EPOCHS),
-                         regret - errors[i],
-                         alpha=0.25,
-                         ls='--')
+                                 alpha=0.75,
+                                 errorevery=49)
+                # plt.plot(np.arange(c.EPOCHS),
+                #          regret + errors[i],
+                #          alpha=0.25,
+                #          ls='--')
+                # plt.plot(np.arange(c.EPOCHS),
+                #          regret - errors[i],
+                #          alpha=0.25,
+                #          ls='--')
 
             else:
                 plt.plot(np.arange(c.EPOCHS),
@@ -174,7 +176,7 @@ def multiple_beta_std_regret_plots(std_dev,
     '''Plot standard deviation as a funcntion of time for different update rules.'''
 
     i = 0
-    plt.xlabel('Episodes')
+    plt.xlabel('Timestep')
     plt.ylabel(r'$\sigma$(Regret)')
     plt.ylim(0, 175)
 
@@ -213,8 +215,8 @@ def alpha_plots(alphas,
                 plotsuffix='alpha_comparison'):
     '''Plot evolution of alpha values for different update rules.'''
 
-    plt.xlabel('Episode')
-    plt.ylabel(r'$\mathrm{\alpha}$')
+    plt.xlabel('Timestep')
+    plt.ylabel(r'$\mathrm{\alpha}_T$')
 
     i = 0
 

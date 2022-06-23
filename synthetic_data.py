@@ -39,7 +39,9 @@ class TargetContext:
                                   np.random.multivariate_normal(mean=np.zeros(dim_align),
                                                                 cov=c.SIGMA*np.identity(dim_align),
                                                                 size=dim_align)[0])
-            theta_s /= np.sqrt(np.dot(theta_s, theta_s))
+            if np.dot(theta_s, theta_s) > 1:
+                theta_s /= np.sqrt(np.dot(theta_s, theta_s))
+
             old_ind = np.delete(np.arange(self.dimension), ind_list)
 
             if dim_align != self.dimension:

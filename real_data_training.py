@@ -20,12 +20,13 @@ def real_weighted_training(target_data,
                            update_rule='sigmoid',
                            arms_pulled_plot=False,
                            biased_reg=False,
+                           probalistic=False,
                            exp_scale=1):
     '''Training algorithm based on weighted UCB function for linear bandits,
        adapted for real data.'''
 
     if source is None:
-        source = np.zeros(len(target_data[0]))
+        source = np.zeros((1, 1, len(target_data[0])))
         alpha = 0
 
     if estim is None:
@@ -62,38 +63,53 @@ def real_weighted_training(target_data,
     x_history = []
 
     for i in range(0, epochs):
-        index = np.argmax(t.ucb_weighted(target_data,
-                                         a_inv,
-                                         alpha_1,
-                                         alpha_2,
-                                         source,
-                                         theta_estim,
-                                         gamma_scalar,
-                                         gamma_s,
-                                         expl_scale=exp_scale), axis=1)
+
+        if probalistic:
+            prob_values, source_ind = t.probalistic_ucb(target_data,
+                                                        a_inv,
+                                                        alpha_1,
+                                                        source,
+                                                        theta_estim,
+                                                        gamma_scalar,
+                                                        gamma_s,
+                                                        expl_scale=exp_scale,
+                                                        repeats=1)
+            index = np.argmax(prob_values, axis=1)
+
+        else:
+            index = np.argmax(t.ucb_weighted(target_data,
+                                             a_inv,
+                                             alpha_1,
+                                             alpha_2,
+                                             source,
+                                             theta_estim,
+                                             gamma_scalar,
+                                             gamma_s,
+                                             expl_scale=exp_scale), axis=1)
 
         instance = target_data[index]
         x_history.append(instance)
         r_real = reward_data[index]
         alpha_evol[:, i] = np.ndarray.flatten(np.asarray(alpha_2))
         rewards[:, i] = r_real
-        source = np.einsum('mi,mij->mij', source_scale, source)
+        y_t = np.einsum('lij,ij->il', np.asarray(x_history), theta_estim)
+        # source = np.einsum('mi,mij->mij', source_scale, source)
         y_s_new = np.einsum('lij,mij->mil', np.asarray(x_history), source)
         # source_scale = np.einsum('il,mil->mi',
         #                          rewards[:, :i+1],
         #                          y_s_new)/np.einsum('mil,mil->mi',
         #                                             y_s_new,
         #                                             y_s_new)
-        # gamma_s = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_s_new[:, :, :i + 1])/
-        #                             np.sqrt(np.einsum('lij,lij->li',
-        #                                             np.asarray(x_history),
-        #                                             np.asarray(x_history))).T,
-        #                             axis=2)**2 + np.einsum('mij,mij->mi',
-        #                                                 y_s_new - rewards[:, :i+1],
-        #                                                 y_s_new - rewards[:, :i+1]))
-        gamma_s = np.sqrt(2 + np.einsum('mij,mij->mi',
-                                        y_s_new - rewards[:, :i+1],
-                                        y_s_new - rewards[:, :i+1]))
+        gamma_s = np.sqrt(c.LAMB * np.max(np.abs(rewards[:, :i + 1] - y_s_new[:, :, :i + 1])/
+                                    np.sqrt(np.einsum('lij,lij->li',
+                                                    np.asarray(x_history),
+                                                    np.asarray(x_history))).T,
+                                    axis=2)**2 + np.einsum('mij,mij->mi',
+                                                        y_s_new - rewards[:, :i+1],
+                                                        y_s_new - rewards[:, :i+1]))
+        # gamma_s = np.sqrt(c.LAMB * 2 + np.einsum('mij,mij->mi',
+        #                                 y_s_new - rewards[:, :i+1],
+        #                                 y_s_new - rewards[:, :i+1]))
         a_matrix += np.einsum('ij,ik->ijk', instance, instance)
         a_inv -= np.einsum('ijk,ikl->ijl',
                            a_inv,
@@ -126,35 +142,50 @@ def real_weighted_training(target_data,
                                                          np.asarray(x_history))) -
                                      np.tile(np.identity(dimension), (repeats, 1, 1)))
 
-        # gamma_t = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_t[:, :i + 1])/
-        #                          np.sqrt(np.einsum('lij,lij->li',
-        #                                            np.asarray(x_history),
-        #                                            np.asarray(x_history))).T,
-        #                          axis=1) + np.einsum('ij,ij->i',
-        #                                              y_t - rewards[:, :i+1],
-        #                                              y_t - rewards[:, :i+1]))[:, np.newaxis]
         gamma_scalar = np.asarray([np.sqrt(c.LAMB) +
                                    np.sqrt(2 * np.log(np.sqrt(np.linalg.det(a_matrix))/
                                                       (np.sqrt(c.LAMB**dimension) * c.DELTA)))]).T
 
+        gamma_t = np.sqrt(np.max(np.abs(rewards[:, :i + 1] - y_t[:, :i + 1])/
+                                 np.sqrt(np.einsum('lij,lij->li',
+                                                   np.asarray(x_history),
+                                                   np.asarray(x_history))).T,
+                                 axis=1)**2 + np.einsum('ij,ij->i',
+                                                        y_t - rewards[:, :i+1],
+                                                        y_t - rewards[:, :i+1]))[:, np.newaxis]
 
         if update_rule=='hard':
-            alpha_1, alpha_2 = t.hard_update_alphas(gamma_scalar,
+            alpha_1, alpha_2 = t.hard_update_alphas(gamma_t,
                                                     gamma_s,
                                                     no_source=no_sources)
+        
+        elif update_rule=='exp3':
+            if i==0:
+                weight_vector = np.ones((1, no_sources + 1))
+
+            alpha_1, alpha_2, weight_vector = t.exp3_alpha_update(alpha_1,
+                                                                  alpha_2,
+                                                                  r_real,
+                                                                  source_ind,
+                                                                  no_sources+1,
+                                                                  weight_vector,
+                                                                  repeats=1)
 
         elif update_rule=='sigmoid':
             alpha_1, alpha_2 = t.sigmoid_alpha_update(alpha_1,
                                                       alpha_2,
                                                       gamma_s,
-                                                      gamma_scalar,
+                                                      gamma_t,
                                                       beta=beta)
 
         no_pulls[np.arange(repeats), index] += 1
-        inst_regret = [5] - r_real
+        inst_regret = np.max(reward_data) - r_real
         regret_evol[:, i] = inst_regret
-        regr=inst_regret
-        print(f"Instant regret = {regr}")
+        regr = inst_regret
+        if np.isnan(np.sum(a_inv)) or np.isnan(np.sum(theta_estim)):
+            print('not a number loop')
+            break
+        # print(f"Instant regret = {regr}")
 
     mean_regret = np.cumsum(regret_evol, axis=1).sum(axis=0)/repeats
     mean_alpha = alpha_evol.sum(axis=0)/repeats
