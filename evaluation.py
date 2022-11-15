@@ -13,7 +13,8 @@ PLOT_DIR = '/home/steven/weighted_bandits/plots/'
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "sans-serif",
-    "font.sans-serif": ["Helvetica"]})
+    "font.sans-serif": ["Helvetica"],
+    "savefig.dpi": 800})
 
 matplotlib.rc('font', **font)
 
@@ -39,7 +40,8 @@ def multiple_alpha_regret_plots(regrets, alphas):
         i += 1
 
     plt.legend()
-    plt.savefig('{PLOT_DIR}/regret_alpha_comparison.png')
+    plt.tight_layout()
+    plt.savefig('{PLOT_DIR}/regret_alpha_comparison.pdf', dpi=800, format= "pdf", bbox_inches='tight', pad_inches= 0)
     plt.show()
     plt.close()
 
@@ -80,11 +82,11 @@ def multiple_beta_regret_over_time_plots(regrets,
             i += 1
 
     plt.legend()
-
+    plt.tight_layout()
     if do_plot:
         plt.savefig(f'{PLOT_DIR}{directory}/'+
                     plotsuffix+
-                    'regret_over_time_beta_comparison.png')
+                    'regret_over_time_beta_comparison.pdf', dpi=800, format= "pdf", bbox_inches='tight', pad_inches= 0)
         # plt.show()
         plt.close()
 
@@ -159,9 +161,9 @@ def multiple_beta_regret_plots(regrets,
         plt.title(r'$||\theta^*-\theta_S||$='+f'{opt_difference}')
 
     plt.legend()
-
+    plt.tight_layout()
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.pdf', dpi=800, format= "pdf", bbox_inches='tight', pad_inches= 0)
         # plt.show()
         plt.close()
 
@@ -200,9 +202,9 @@ def multiple_beta_std_regret_plots(std_dev,
         plt.title(r'$||\theta^*-\theta_S||$='+f'{opt_difference}')
 
     plt.legend()
-
+    plt.tight_layout()
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_{plotsuffix}regret_std_beta_comparison.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plot_label}_{plotsuffix}regret_std_beta_comparison.pdf', dpi=800, format= "pdf", bbox_inches='tight', pad_inches= 0)
         # plt.show()
         plt.close()
 
@@ -231,8 +233,8 @@ def alpha_plots(alphas,
             i += 1
 
     plt.legend()
-
+    plt.tight_layout()
     if do_plot:
-        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.png')
+        plt.savefig(f'{PLOT_DIR}{directory}/{plotsuffix}.pdf', dpi=800, format= "pdf", bbox_inches='tight', pad_inches= 0)
         # plt.show()
         plt.close()

@@ -100,7 +100,7 @@ def sigmoid_alpha_update(alpha_1, alpha_2, gamma_s, gamma, beta=c.BETA):
     return alpha_1, alpha_2[:, np.newaxis]
 
 
-def exp3_alpha_update(alpha_1,
+def exp4_alpha_update(alpha_1,
                       alpha_2,
                       r_real,
                       source_ind,
@@ -110,11 +110,10 @@ def exp3_alpha_update(alpha_1,
                       repeats=c.REPEATS):
     '''Update weights and probabilities for the EXP3 algorithm.'''
     alpha = np.concatenate((alpha_1, alpha_2.T))
-    weight_vector[np.arange(repeats), source_ind] *= np.exp(beta * r_real/
-                                                              (no_experts *
-                                                               alpha.T[np.arange(repeats),
-                                                                       source_ind]))
-    alpha = (1-beta) * weight_vector/np.sum(weight_vector, axis=1)[:, np.newaxis] + beta/no_experts
+    weight_vector[np.arange(repeats), source_ind] *= np.exp(beta * (1 - (1 - r_real)/
+                                                                    (alpha.T[np.arange(repeats),
+                                                                            source_ind])))
+    alpha = weight_vector/np.sum(weight_vector, axis=1)[:, np.newaxis]
     alpha_1 = alpha[:, :no_experts - 1]
     alpha_2 = 1 - np.sum(alpha_1, axis=1)
     return alpha_1.T, alpha_2[:, np.newaxis], weight_vector
@@ -352,11 +351,11 @@ def weighted_training(target,
                                                     gamma_t,
                                                     beta=beta)
 
-        elif update_rule=='exp3':
+        elif update_rule=='exp4':
             if i==0:
                 weight_vector = np.ones((c.REPEATS, no_sources + 1))
 
-            alpha_1, alpha_2, weight_vector = exp3_alpha_update(alpha_1,
+            alpha_1, alpha_2, weight_vector = exp4_alpha_update(alpha_1,
                                                                 alpha_2,
                                                                 r_real,
                                                                 source_ind,

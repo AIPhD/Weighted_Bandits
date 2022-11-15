@@ -21,7 +21,7 @@ def main():
                 #    ['F', 35, '6', True],
                 #    ['F', 35, '9', False],
                 #    ['F', 35, '9', True],
-                #    ['F', 35, '11', True],
+                   ['F', 35, '11', True],
                 #    ['F', 35, '11', False],
                 #    ['F', 35, '19', False],
                 #    ['F', 35, '19', True],
@@ -52,14 +52,14 @@ def main():
     target_class = sd.TargetContext()
     sources=[]
 
-    for i in range(1, c.NO_SOURCES + 1):
-        sources.append(target_class.source_bandit())
-        source = np.asarray(sources)
-        conf = np.einsum('mij,mij->mi',
-                         target_class.theta_opt-source,
-                         target_class.theta_opt-source)
+    # for i in range(1, c.NO_SOURCES + 1):
+    #     sources.append(target_class.source_bandit())
+    #     source = np.asarray(sources)
+    #     conf = np.einsum('mij,mij->mi',
+    #                      target_class.theta_opt-source,
+    #                      target_class.theta_opt-source)
         # source_comparison(target_class, estim, source, i,theta_conf=conf, probalistic=True)
-        source_comparison(target_class, estim, source, i)
+        # source_comparison(target_class, estim, source, i)
 
     # for i in range(40, c.DIMENSION_ALIGN + 1):
         # source = target_class.source_bandits(c.NO_SOURCES, dim_align=i)
@@ -115,13 +115,13 @@ def real_data_comparison(gender=None,
                                                update_rule='sigmoid',
                                                exp_scale=1)
 
-    exp3_output = rdt.real_weighted_training(real_target,
+    exp4_output = rdt.real_weighted_training(real_target,
                                              real_rewards,
                                              source=real_source,
                                              estim=estim,
                                              alpha=1/(len(source_indices)+1),
                                              no_sources=len(source_indices),
-                                             update_rule='exp3',
+                                             update_rule='exp4',
                                              probalistic=True,
                                              exp_scale=1)
 
@@ -171,8 +171,8 @@ def real_data_comparison(gender=None,
     #     e.multiple_beta_regret_plots([matrix_output[1]],
     #                                  plot_label='matrix weighted')
 
-    e.multiple_beta_regret_plots([exp3_output[1]],
-                                 plot_label='EXP3')
+    e.multiple_beta_regret_plots([exp4_output[1]],
+                                 plot_label='EXP4')
     e.multiple_beta_regret_plots([biased_output[1]],
                                  bethas=[0.1],
                                  directory='real_dim_align_comparison',
@@ -430,14 +430,14 @@ def source_comparison(target_class,
     betas = [0.1]
     opt = target_class.theta_opt
     theta_diff = np.min(np.sqrt(np.einsum('mj,mj->m', opt-source[:, 0, :], opt-source[:, 0, :])))
-    regret_exp, alpha_exp, regret_std_exp = t.weighted_training(target=target_class,
-                                                                source=source,
-                                                                estim=estim,
-                                                                exp_scale=0.5,
-                                                                no_sources=i,
-                                                                alpha=1/(i+1),
-                                                                update_rule='exp3',
-                                                                probalistic=True)
+    regret_exp4, alpha_exp4, regret_std_exp4 = t.weighted_training(target=target_class,
+                                                                   source=source,
+                                                                   estim=estim,
+                                                                   exp_scale=0.5,
+                                                                   no_sources=i,
+                                                                   alpha=1/(i+1),
+                                                                   update_rule='exp4',
+                                                                   probalistic=True)
     regret_linucb, alpha_linucb, regret_std_linucb = t.weighted_training(target=target_class,
                                                                          source=source,
                                                                          estim=estim,
@@ -486,9 +486,9 @@ def source_comparison(target_class,
                                  regret_std_sigmoid,
                                  betas,
                                  plot_label='Softmax update rule')
-    e.multiple_beta_regret_plots([regret_exp],
-                                 [regret_std_exp],
-                                 plot_label='EXP3')
+    e.multiple_beta_regret_plots([regret_exp4],
+                                 [regret_std_exp4],
+                                 plot_label='EXP4')
     e.multiple_beta_regret_plots(regret_biased,
                                  regret_std_biased,
                                  betas,
